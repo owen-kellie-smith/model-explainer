@@ -1,6 +1,9 @@
 # model-visualisation-demo (Standalone HTML) 
 A lightweight, single‑file HTML tool for drawing graphs in the browser — no build step, no backend, no dependencies beyond standard web APIs (and optional CDN libraries if you choose to add them).
 
+## Live Demo (GitHub Pages)
+See https://owen-kellie-smith.github.io/model-visualisation-demo/.
+
 ## Features
 - Simple UI to create/edit graphs
 - Zero setup: open `index.html` and go
@@ -16,9 +19,6 @@ A lightweight, single‑file HTML tool for drawing graphs in the browser — no 
      python3 -m http.server 8080
      # Then visit http://localhost:8080
      ```
-
-## Live Demo (GitHub Pages)
-This repo is ready for GitHub Pages at https://owen-kellie-smith.github.io/model-visualisation-demo/.
 
 ## Privacy & Security
 - No tracking, no analytics, no network calls by default.
