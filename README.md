@@ -29,7 +29,7 @@ This repo is ready for GitHub Pages. Once enabled, your app will be available at
 MIT — see ./LICENSE.
 
 ## Attribution
-- Code largely authored by you with assistance from Copilot‑style AI tools.
+- Code largely authored by Copilot‑style AI tools.
 
 ## Notes for Contributors
 - Please open issues for bugs/feature requests.
