@@ -21,7 +21,7 @@ See https://owen-kellie-smith.github.io/model-visualisation-demo/.
      ```
 
 ## Privacy & Security
-- No tracking, no analytics, no network calls by default.
+- No tracking, no analytics.
 - Your graphs remain in your browser unless you explicitly export or share them.
 
 ## License
