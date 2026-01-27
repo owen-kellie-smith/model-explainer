@@ -16,9 +16,10 @@ A lightweight, single‑file HTML tool for drawing graphs in the browser — no 
      python3 -m http.server 8080
      # Then visit http://localhost:8080
      ```
-
+<!--
 ## Live Demo (GitHub Pages)
-This repo is ready for GitHub Pages. Once enabled, your app will be available at:# Graph Drawer (Standalone HTML)
+This repo is ready for GitHub Pages. Once enabled, your app will be available at: ????
+-->
 
 ## Privacy & Security
 - No tracking, no analytics, no network calls by default.
