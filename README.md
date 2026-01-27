@@ -32,4 +32,3 @@ MIT — see ./LICENSE.
 
 ## Notes for Contributors
 - Please open issues for bugs/feature requests.
-- Keep the app dependency‑free unless there’s a compelling reason.
