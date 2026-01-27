@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Model-Visualisation-Demo</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+    #left, #right {
+      height: 100%;
+      overflow: auto;
+    }
+    #left {
+      width: 40%;
+      padding: 1em;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    #right {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+      background: #f9f9f9;
+    }
+    #splitter {
+      width: 5px;
+      cursor: ew-resize;
+      background: #ccc;
+    }
+    textarea {
+      width: 100%;
+      height: 100%;
+      border: none;
+      resize: none;
+      font-family: monospace;
+      font-size: 1.1em;
+      outline: none;
+      overflow-y: auto;
+      box-sizing: border-box;
+    }
+    #toolbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+      padding: 0.6em 0.8em;
+      border-bottom: 1px solid #ddd;
+      background: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #toolbar span {
+      font-size: 0.95em;
+    }
+    #status {
+      margin-left: auto;
+      color: #666;
+      font-size: 0.9em;
+    }
+    #preview {
+      flex: 1 1 auto;
+      width: 100%;
+      text-align: center;
+      overflow: auto;
+      padding: 1em;
+      box-sizing: border-box;
+    }
+    #preview svg {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    #downloadLinks {
+      flex: 0 0 auto;
+      text-align: center;
+      padding: 0.8em;
+      border-top: 1px solid #ddd;
+      background: #fff;
+      position: sticky;
+      bottom: 0;
+    }
+    #error {
+      color: #b00020;
+      white-space: pre-wrap;
+      text-align: left;
+      margin: 1em auto;
+      max-width: 920px;
+      background: #fff0f0;
+      border: 1px solid #f3c5c5;
+      padding: 0.75em;
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <div id="left">
+    <textarea id="umlInput" spellcheck="false">
+graph LR
+    A[Square Rect] --> B((Circle))
+    A --> C(Round Rect)
+    B --> D{Rhombus}
+    C --> D
+    </textarea>
+  </div>
+
+  <div id="splitter"></div>
+
+  <div id="right">
+	<div id="toolbar" title="Supported languages: Mermaid, PlantUML, Graphviz (DOT).
+	To force detection:
+	• Mermaid: start with any of graph|flowchart|sequenceDiagram|classDiagram|...'
+	• PlantUML: include '@startuml|enduml'
+	• Graphviz: start with 'digraph {'">	  
+		<span>Language: <strong id="detectedLabel">Mermaid</strong> 
+		(<a id="languageLink" href="#" target="_blank" style="text-decoration:none;color:#0078d4;">Learn more</a>)
+	  </span>
+	  <span id="status">Ready</span>
+	</div>
+
+    <div id="preview"><em>Diagram will appear here</em></div>
+
+    <div id="downloadLinks">
+      <a id="downloadPNG" href="#" download="diagram.png">Download as PNG</a> |
+      <a id="downloadSVG" href="#" download="diagram.svg">Download as SVG</a>
+    </div>
+  </div>
+
+  <!-- Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+  <!-- For PlantUML encoding (DEFLATE): -->
+  <script src="https://cdn.jsdelivr.net/npm/zlibjs@0.3.1/bin/zlib.min.js"></script>
+  <!-- Graphviz in the browser (Viz.js v2): -->
+  <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
+
+  <script>
+    const textarea = document.getElementById('umlInput');
+    const preview = document.getElementById('preview');
+    const statusEl = document.getElementById('status');
+    const detectedLabel = document.getElementById('detectedLabel');
+    const languageLink = document.getElementById('languageLink');
+    const linkPNG = document.getElementById('downloadPNG');
+    const linkSVG = document.getElementById('downloadSVG');
+
+    let timeout;
+    mermaid.initialize({ startOnLoad: false });
+    let viz = new Viz();
+    let currentSvgObjectUrl = null;
+
+    // Storage keys
+    const STORAGE_KEY_TEXT = 'diagramText';
+
+    function setStatus(msg, ms = 800) {
+      statusEl.textContent = msg;
+      if (setStatus.t) clearTimeout(setStatus.t);
+      setStatus.t = setTimeout(() => (statusEl.textContent = 'Ready'), ms);
+    }
+
+    function detectLanguage(text) {
+      const trimmed = text.trim();
+      if (/@startuml\b/i.test(trimmed) || /\benduml\b/i.test(trimmed)) return 'plantuml';
+//      if (/skinparam|actor|component|package\b/i.test(trimmed)) return 'plantuml';
+      if (/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|quadrantChart|mindmap|timeline)\b/i.test(trimmed)) return 'mermaid';
+      if (/^(digraph|graph)\b[\s\S]*\{/i.test(trimmed)) return 'graphviz';
+      return 'mermaid';
+    }
+
+    function plantumlEncode(dataBytes) {
+      const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
+      let result = "";
+      for (let i = 0; i < dataBytes.length;) {
+        const b1 = dataBytes[i++], b2 = i < dataBytes.length ? dataBytes[i++] : 0, b3 = i < dataBytes.length ? dataBytes[i++] : 0;
+        const c1 = b1 >> 2;
+        const c2 = ((b1 & 0x3) << 4) | (b2 >> 4);
+        const c3 = ((b2 & 0xf) << 2) | (b3 >> 6);
+        const c4 = b3 & 0x3f;
+        result += alphabet[c1] + alphabet[c2] + alphabet[c3] + alphabet[c4];
+      }
+      return result;
+    }
+    function encodePlantUml(text) {
+      const deflate = new Zlib.Deflate(new TextEncoder().encode(text));
+      const compressed = deflate.compress();
+      return plantumlEncode(compressed);
+    }
+
+    async function svgToPng(svgElement, svgData, anchorEl, filename = 'diagram.png', scale = 2) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        const b64 = btoa(unescape(encodeURIComponent(svgData)));
+        img.src = 'data:image/svg+xml;base64,' + b64;
+        img.onload = () => {
+          const vb = svgElement.getAttribute('viewBox');
+          let w = img.width, h = img.height;
+          if (vb) {
+            const parts = vb.split(' ');
+            if (parts.length === 4) {
+              w = parseFloat(parts[2]);
+              h = parseFloat(parts[3]);
+            }
+          }
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.floor(w * scale));
+          canvas.height = Math.max(1, Math.floor(h * scale));
+          const ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          anchorEl.href = canvas.toDataURL('image/png');
+          anchorEl.download = filename;
+          resolve();
+        };
+      });
+    }
+
+    async function renderMermaid(source, title) {
+      preview.innerHTML = '';
+      const mermaidDiv = document.createElement('div');
+      mermaidDiv.className = 'mermaid';
+      mermaidDiv.textContent = source;
+      preview.appendChild(mermaidDiv);
+      try {
+        mermaid.init(undefined, mermaidDiv);
+        await new Promise(requestAnimationFrame);
+        const svgElement = mermaidDiv.querySelector('svg');
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
+        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
+        linkSVG.href = currentSvgObjectUrl;
+        linkSVG.download = `${title}.svg`;
+        await svgToPng(svgElement, svgData, linkPNG, `${title}.png`, 2);
+      } catch (e) {
+        preview.innerHTML = `<div id="error">Error rendering Mermaid:\n${e.message}</div>`;
+		linkSVG.removeAttribute('href'); linkSVG.removeAttribute('download');
+		linkPNG.removeAttribute('href'); linkPNG.removeAttribute('download');
+      }
+    }
+
+    async function renderGraphviz(source, title) {
+      preview.innerHTML = '';
+      try {
+        const svgElement = await viz.renderSVGElement(source);
+        preview.appendChild(svgElement);
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
+        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
+        linkSVG.href = currentSvgObjectUrl;
+        linkSVG.download = `${title}.svg`;
+        await svgToPng(svgElement, svgData, linkPNG, `${title}.png`, 2);
+      } catch (e) {
+        viz = new Viz();
+        preview.innerHTML = `<div id="error">Error rendering Graphviz:\n${e.message}</div>`;
+		linkSVG.removeAttribute('href'); linkSVG.removeAttribute('download');
+		linkPNG.removeAttribute('href'); linkPNG.removeAttribute('download');
+      }
+    }
+
+    async function renderPlantUML(source, title) {
+      preview.innerHTML = '';
+      try {
+        const encoded = encodePlantUml(source);
+        const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
+        const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+        const img = document.createElement('img');
+        img.src = svgUrl;
+        preview.appendChild(img);
+        linkSVG.href = svgUrl;
+        linkSVG.download = `${title}.svg`;
+        linkPNG.href = pngUrl;
+        linkPNG.download = `${title}.png`;
+      } catch (e) {
+        preview.innerHTML = `<div id="error">Error rendering PlantUML:\n${e.message}</div>`;
+		linkSVG.removeAttribute('href'); linkSVG.removeAttribute('download');
+		linkPNG.removeAttribute('href'); linkPNG.removeAttribute('download');
+      }
+    }
+
+
+function extractGraphTitle(text) {
+  // Match digraph or graph followed by quoted or unquoted name
+  const nameMatch = text.match(/(?:digraph|graph)\s+(?:"([^"]+)"|([^\s{]+))/i);
+  if (nameMatch) {
+    return nameMatch[1] || nameMatch[2]; // quoted OR unquoted
+  }
+
+  // Fallback: first label
+  const labelMatch = text.match(/label\s*=\s*"([^"]+)"/i);
+  return labelMatch ? labelMatch[1] : 'Graphviz Diagram';
+}
+
+
+    async function updateDiagram() {
+      const text = textarea.value;
+      localStorage.setItem(STORAGE_KEY_TEXT, text);
+      const type = detectLanguage(text);
+
+      // Extract title for HTML and filenames
+      let newTitle = 'Diagram';
+      if (type === 'mermaid') {
+        const match = text.match(/title\["([^"]+)"\]/);
+        newTitle = match ? match[1] : 'Mermaid Diagram';
+      } else if (type === 'plantuml') {
+        const match = text.match(/^\s*title\s+(.+)/mi);
+        newTitle = match ? match[1].replace(/['"]+/g, '') : 'PlantUML Diagram';
+      } else {
+
+		newTitle = extractGraphTitle(text);
+      }
+      document.title = newTitle;
+
+      detectedLabel.textContent = type === 'plantuml' ? 'PlantUML' : type === 'graphviz' ? 'Graphviz (DOT)' : 'Mermaid';
+//      const languageLink = document.getElementById('languageLink');   // duplicate declaration
+      if (type === 'mermaid') languageLink.href = 'https://mermaid.js.org/syntax/examples.html';
+      else if (type === 'plantuml') languageLink.href = 'https://plantuml.com/guide';
+      else languageLink.href = 'https://graphviz.org/gallery/';
+
+      setStatus(`Detected: ${detectedLabel.textContent}`, 900);
+
+      if (type === 'mermaid') await renderMermaid(text, newTitle);
+      else if (type === 'graphviz') await renderGraphviz(text, newTitle);
+      else await renderPlantUML(text, newTitle);
+    }
+
+    textarea.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(updateDiagram, 600);
+    });
+
+    window.addEventListener('load', () => {
+      const savedText = localStorage.getItem(STORAGE_KEY_TEXT);
+      if (savedText) textarea.value = savedText;
+      updateDiagram();
+    });
+
+    // Splitter logic
+    const splitter = document.getElementById('splitter');
+    const left = document.getElementById('left');
+    let isDragging = false;
+    splitter.addEventListener('mousedown', () => {
+      isDragging = true;
+      document.body.style.cursor = 'ew-resize';
+    });
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const screenWidth = window.innerWidth;
+      const rawPercent = Math.max(20,Math.min(80,(e.clientX / screenWidth) * 100));
+      left.style.width = `${Math.round(rawPercent / 5) * 5}%`;
+    });
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      document.body.style.cursor = 'default';
+    });
+  </script>
+</body>
+</html>
