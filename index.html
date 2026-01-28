@@ -100,11 +100,40 @@
 <body>
   <div id="left">
     <textarea id="umlInput" spellcheck="false">
-graph LR
-    A[Square Rect] --> B((Circle))
-    A --> C(Round Rect)
-    B --> D{Rhombus}
-    C --> D
+@startuml
+title Development cycle
+
+'left to right direction
+skinparam style strictuml
+
+actor U  as "User"
+component C  as "Code"
+actor D  as "Developer"
+component B  as "Bug Report"
+actor T  as "Tester"
+component R  as "Requirements"
+component PR  as "Prioritised Requirements"
+component TC as "Test Case"
+'actor P  as "Publisher"
+component RN as "Release Note"
+actor M as "Owner"
+
+D -r-> C : writes
+B  .u.> D  : prompts
+T -r-> TC : drafts
+U  --> R  : describes
+R  --> PR
+M --> PR : selects
+TC <.. PR  : is traced to
+
+TC  -u-> C : evaluates
+TC  -u-> B  : [fail] produces
+
+M <-- C  : is published by
+M --> RN : publishes (with code)
+RN ..> U : informs
+
+@enduml
     </textarea>
   </div>
 
