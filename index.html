@@ -318,6 +318,8 @@
     async function renderFromState() {
       if (!DiagramState.text) {
         el_g_preview.innerHTML = '<em>Choose an example or start typing…</em>';
+        lastRenderedLanguage = null;   // 👈 reset renderer memory
+        plantUmlImg = null;            // 👈 reset PlantUML cache
         setStatus('Ready');
         return;
       }
@@ -347,6 +349,7 @@
 
       try {
         if (language === 'mermaid') {
+          el_g_preview.innerHTML = '';   // 👈 critical
           const d = document.createElement('div');
           d.className = 'mermaid';
           d.textContent = text;
