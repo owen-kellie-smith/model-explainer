@@ -100,57 +100,57 @@
 <body>
   <div id="left">
     <textarea id="umlInput" spellcheck="false">
-  @startuml
+      @startuml
+      ' demonstration chart
+      title Development cycle
 
-  title Development cycle
+      'left to right direction
+      skinparam style strictuml
 
-  'left to right direction
-  skinparam style strictuml
+      actor U  as "User"
+      component C  as "Code"
+      actor D  as "Developer"
+      component B  as "Bug Report"
+      actor T  as "Tester"
+      component R  as "Requirements"
+      component PR  as "Prioritised Requirements"
+      component TC as "Test Case"
+      'actor P  as "Publisher"
+      component RN as "Release Note"
+      actor M as "Owner"
 
-  actor U  as "User"
-  component C  as "Code"
-  actor D  as "Developer"
-  component B  as "Bug Report"
-  actor T  as "Tester"
-  component R  as "Requirements"
-  component PR  as "Prioritised Requirements"
-  component TC as "Test Case"
-  'actor P  as "Publisher"
-  component RN as "Release Note"
-  actor M as "Owner"
+      D -r-> C : writes
+      B  .u.> D  : prompts
+      T -r-> TC : drafts
+      U  --> R  : describes
+      R  --> PR
+      M --> PR : selects
+      TC <.. PR  : is traced to
 
-  D -r-> C : writes
-  B  .u.> D  : prompts
-  T -r-> TC : drafts
-  U  --> R  : describes
-  R  --> PR
-  M --> PR : selects
-  TC <.. PR  : is traced to
+      TC  -u-> C : evaluates
+      TC  -u-> B  : [fail] produces
 
-  TC  -u-> C : evaluates
-  TC  -u-> B  : [fail] produces
+      M <-- C  : is published by
+      M --> RN : publishes (with code)
+      RN ..> U : informs
 
-  M <-- C  : is published by
-  M --> RN : publishes (with code)
-  RN ..> U : informs
-
-  @enduml
+      @enduml
     </textarea>
   </div>
 
   <div id="splitter"></div>
 
   <div id="right">
-  <div id="toolbar" title="Supported languages: Mermaid, PlantUML, Graphviz (DOT).
-  To force detection:
-  • Mermaid: start with any of graph|flowchart|sequenceDiagram|classDiagram|...'
-  • PlantUML: include '@startuml|enduml'
-  • Graphviz: start with 'digraph {'">    
-    <span>Language: <strong id="detectedLabel">Mermaid</strong> 
-    (<a id="languageLink" href="#" target="_blank" style="text-decoration:none;color:#0078d4;">Learn more</a>)
-    </span>
-    <span id="status">Ready</span>
-  </div>
+    <div id="toolbar" title="Supported languages: Mermaid, PlantUML, Graphviz (DOT).
+      To force detection:
+      • Mermaid: start with any of graph|flowchart|sequenceDiagram|classDiagram|...'
+      • PlantUML: include '@startuml|enduml'
+      • Graphviz: start with 'digraph {'">    
+      <span>Language: <strong id="detectedLabel">Mermaid</strong> 
+      (<a id="languageLink" href="#" target="_blank" style="text-decoration:none;color:#0078d4;">Learn more</a>)
+      </span>
+      <span id="status">Ready</span>
+    </div>
 
     <div id="preview"><em>Diagram will appear here</em></div>
 
@@ -162,9 +162,7 @@
 
   <!-- Libraries -->
   <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-  <!-- For PlantUML encoding (DEFLATE): -->
   <script src="https://cdn.jsdelivr.net/npm/zlibjs@0.3.1/bin/zlib.min.js"></script>
-  <!-- Graphviz in the browser (Viz.js v2): -->
   <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/viz.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
 
@@ -191,7 +189,6 @@
 
     let viz = new Viz();
     let timeout;
-    let currentSvgObjectUrl = null;
 
     const DiagramState = { text:'', language:'mermaid', title:'Diagram' };
     let isInitializing = true;
@@ -242,7 +239,7 @@
 
 /* =========================================================
    4. Behavior Functions (What the app actually does when called by event listeners)
-   State updates, URl-encoding, detection, rendering, helpers
+   State updates, URl-encoding, detection, helpers
    ========================================================= */
    
 /* =========================================================
@@ -250,7 +247,6 @@
    ========================================================= */
 
     function initState() {
-      debugger;
       const fromUrl = getDiagramFromUrl();
 
       if (fromUrl) {
@@ -301,17 +297,40 @@
 
       try {
         if (language === 'mermaid') {
-          const d = document.createElement('div'); d.className='mermaid'; d.textContent=text; el_g_preview.appendChild(d);
-          mermaid.init(undefined,d);
+          const d = document.createElement('div');
+          d.className = 'mermaid';
+          d.textContent = text;
+          el_g_preview.appendChild(d);
+
+          mermaid.init(undefined, d);
+
+          // 👇 WAIT for Mermaid to finish rendering
+          requestAnimationFrame(() => {
+            const svg = d.querySelector('svg');
+            if (svg) enableSvgAndPngDownloads(svg, title);
+          });
         } else if (language === 'graphviz') {
-          el_g_preview.appendChild(await viz.renderSVGElement(text));
+          const svg = await viz.renderSVGElement(text);
+          el_g_preview.appendChild(svg);
+          enableSvgAndPngDownloads(svg, title);
         } else {
-          const img=document.createElement('img');
-          img.src='https://www.plantuml.com/plantuml/svg/~1'+encodePlantUml(text);
+          const encoded = encodePlantUml(text);
+          const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
+          const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+
+          const img = document.createElement('img');
+          img.src = svgUrl;
           el_g_preview.appendChild(img);
+
+          el_g_downloadSVG.href = svgUrl;
+          el_g_downloadSVG.download = `${title}.svg`;
+          el_g_downloadPNG.href = pngUrl;
+          el_g_downloadPNG.download = `${title}.png`;
         }
       } catch(e) {
         el_g_preview.innerHTML='<div id="error">'+e.message+'</div>';
+        el_g_downloadSVG.removeAttribute('href');
+        el_g_downloadPNG.removeAttribute('href');
       }
     }
 
@@ -383,76 +402,9 @@
       return labelMatch ? labelMatch[1] : 'Graphviz Diagram';
     }
 
-/* =========================================================
-   4.4 Functions — rendering engines
-   ========================================================= */
-
-    async function renderMermaid(source, title) {
-      el_g_preview.innerHTML = '';
-      const mermaidDiv = document.createElement('div');
-      mermaidDiv.className = 'mermaid';
-      mermaidDiv.textContent = source;
-      el_g_preview.appendChild(mermaidDiv);
-      try {
-        mermaid.init(undefined, mermaidDiv);
-        await new Promise(requestAnimationFrame);
-        const svgElement = mermaidDiv.querySelector('svg');
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
-        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
-        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
-        el_g_downloadSVG.href = currentSvgObjectUrl;
-        el_g_downloadSVG.download = `${title}.svg`;
-        await svgToPng(svgElement, svgData, el_g_downloadPNG, `${title}.png`, 2);
-      } catch (e) {
-        el_g_preview.innerHTML = `<div id="error">Error rendering Mermaid:\n${e.message}</div>`;
-    el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
-    el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
-      }
-    }
-
-    async function renderGraphviz(source, title) {
-      el_g_preview.innerHTML = '';
-      try {
-        const svgElement = await viz.renderSVGElement(source);
-        el_g_preview.appendChild(svgElement);
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
-        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
-        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
-        el_g_downloadSVG.href = currentSvgObjectUrl;
-        el_g_downloadSVG.download = `${title}.svg`;
-        await svgToPng(svgElement, svgData, el_g_downloadPNG, `${title}.png`, 2);
-      } catch (e) {
-        viz = new Viz();
-        el_g_preview.innerHTML = `<div id="error">Error rendering Graphviz:\n${e.message}</div>`;
-    el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
-    el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
-      }
-    }
-
-    async function renderPlantUML(source, title) {
-      el_g_preview.innerHTML = '';
-      try {
-        const encoded = encodePlantUml(source);
-        const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
-        const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
-        const img = document.createElement('img');
-        img.src = svgUrl;
-        el_g_preview.appendChild(img);
-        el_g_downloadSVG.href = svgUrl;
-        el_g_downloadSVG.download = `${title}.svg`;
-        el_g_downloadPNG.href = pngUrl;
-        el_g_downloadPNG.download = `${title}.png`;
-      } catch (e) {
-        el_g_preview.innerHTML = `<div id="error">Error rendering PlantUML:\n${e.message}</div>`;
-    el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
-    el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
-      }
-    }
 
 /* =========================================================
-   4.5 Functions — encoding & export utilities
+   4.4 Functions — encoding & export utilities
    ========================================================= */
 
     function encodePlantUml(text) {
@@ -462,6 +414,7 @@
     }
 
     function plantumlEncode(dataBytes) {
+    // see e.g. https://plantuml.com/code-javascript-synchronous
       const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
       let result = "";
       for (let i = 0; i < dataBytes.length;) {
@@ -475,34 +428,39 @@
       return result;
     }
 
-    async function svgToPng(svgElement, svgData, anchorEl, filename = 'diagram.png', scale = 2) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        const b64 = btoa(unescape(encodeURIComponent(svgData)));
-        img.src = 'data:image/svg+xml;base64,' + b64;
-        img.onload = () => {
-          const vb = svgElement.getAttribute('viewBox');
-          let w = img.width, h = img.height;
-          if (vb) {
-            const parts = vb.split(' ');
-            if (parts.length === 4) {
-              w = parseFloat(parts[2]);
-              h = parseFloat(parts[3]);
-            }
-          }
-          const canvas = document.createElement('canvas');
-          canvas.width = Math.max(1, Math.floor(w * scale));
-          canvas.height = Math.max(1, Math.floor(h * scale));
-          const ctx = canvas.getContext('2d');
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          anchorEl.href = canvas.toDataURL('image/png');
-          anchorEl.download = filename;
-          resolve();
-        };
-      });
+    function enableSvgAndPngDownloads(svgElement, title) {
+      // ---- SVG ----
+      const svgData = new XMLSerializer().serializeToString(svgElement);
+      const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+      const svgUrl = URL.createObjectURL(svgBlob);
+
+      el_g_downloadSVG.href = svgUrl;
+      el_g_downloadSVG.download = `${title}.svg`;
+
+      // ---- PNG ----
+      const img = new Image();
+      img.src = 'data:image/svg+xml;base64,' +
+                btoa(unescape(encodeURIComponent(svgData)));
+
+      img.onload = () => {
+        const vb = svgElement.viewBox?.baseVal;
+        const w = vb?.width || img.width;
+        const h = vb?.height || img.height;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w * 2;
+        canvas.height = h * 2;
+
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        el_g_downloadPNG.href = canvas.toDataURL('image/png');
+        el_g_downloadPNG.download = `${title}.png`;
+      };
     }
+
 
   </script>
 </body>
