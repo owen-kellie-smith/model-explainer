@@ -321,10 +321,7 @@
             const svg = d.querySelector('svg');
             if (svg) {
               enableSvgAndPngDownloads(svg, title);
-              setStatus('Rendered');
-              setTimeout(() => {
-                setStatus('Ready');
-              }, 800);
+              markAsRendered();
             }
           });
         } else if (language === 'graphviz') {
@@ -337,10 +334,7 @@
           }
           el_g_preview.appendChild(svg);
           enableSvgAndPngDownloads(svg, title);
-          setStatus('Rendered');
-          setTimeout(() => {
-            setStatus('Ready');
-          }, 800);
+          markAsRendered();
 
         } else {
           const encoded = encodePlantUml(text);
@@ -355,10 +349,7 @@
           el_g_downloadSVG.download = `${title}.svg`;
           el_g_downloadPNG.href = pngUrl;
           el_g_downloadPNG.download = `${title}.png`;
-          setStatus('Rendered');
-          setTimeout(() => {
-            setStatus('Ready');
-          }, 800);
+          markAsRendered();
 
         }
       } catch(e) {
@@ -369,6 +360,13 @@
       }
     }
 
+
+    function markAsRendered(){
+              setStatus('Rendered');
+              setTimeout(() => {
+                setStatus('Ready');
+              }, 800);
+    }
 
 /* =========================================================
    4.2 Functions — URL encoding / decoding
