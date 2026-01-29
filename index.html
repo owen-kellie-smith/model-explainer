@@ -13,7 +13,6 @@
     }
     #left, #right {
       height: 100%;
-      overflow: auto;
     }
     #left {
       width: 40%;
@@ -194,12 +193,24 @@
     mermaid.initialize({ startOnLoad: false }); // window.mermaid is attached by mermaid.min.js called earlier
     let isDragging = false;
 
+    const el_g_status = document.getElementById('status');
+
+    function setStatus(text, kind = 'neutral') {
+      el_g_status.textContent = text;
+
+      el_g_status.style.color =
+        kind === 'error' ? '#b00020' :
+        kind === 'busy'  ? '#555' :
+                           '#666';
+    }
+
 /* =========================================================
    2. Startup & Initial State Resolution
    One-time boot logic (URL → text → state → first render)
    ========================================================= */
 
     window.addEventListener('load', async () => {
+      setStatus('Initializing…', 'busy');
       initState();
       Object.assign(DiagramState, deriveState(DiagramState.text));
       isInitializing = false;    // NOW URL updates allowed
@@ -214,6 +225,7 @@
 
     el_g_umlInput.addEventListener('input', () => {
       clearTimeout(timeout);
+      setStatus('Waiting for input…', 'busy');
       timeout = setTimeout(() => {
         updateState(el_g_umlInput.value);
       }, 600);
@@ -267,6 +279,7 @@
     }
 
     async function updateState(text, opts = {}) {
+      // opts.lockLanguage reserved for future manual language override
       const derived = deriveState(text);
 
       DiagramState.text = text;
@@ -280,12 +293,12 @@
     }
 
     async function renderFromState() {
+      setStatus('Rendering…', 'busy');
       const { text, language, title } = DiagramState;
       document.title = title;
       el_g_detectedLabel.textContent = language;
-      const el_languageLink = document.getElementById('languageLink');
-      if (el_languageLink) {
-        el_languageLink.href =
+      if (el_g_languageLink) {
+        el_g_languageLink.href =
           language === 'mermaid'
             ? 'https://mermaid.js.org/syntax/examples.html'
             : language === 'plantuml'
@@ -306,12 +319,29 @@
           // 👇 WAIT for Mermaid to finish rendering
           requestAnimationFrame(() => {
             const svg = d.querySelector('svg');
-            if (svg) enableSvgAndPngDownloads(svg, title);
+            if (svg) {
+              enableSvgAndPngDownloads(svg, title);
+              setStatus('Rendered');
+              setTimeout(() => {
+                setStatus('Ready');
+              }, 800);
+            }
           });
         } else if (language === 'graphviz') {
-          const svg = await viz.renderSVGElement(text);
+          let svg;
+          try {
+            svg = await viz.renderSVGElement(text);
+          } catch (e) {
+            viz = new Viz(); // reset after failure
+            throw e;
+          }
           el_g_preview.appendChild(svg);
           enableSvgAndPngDownloads(svg, title);
+          setStatus('Rendered');
+          setTimeout(() => {
+            setStatus('Ready');
+          }, 800);
+
         } else {
           const encoded = encodePlantUml(text);
           const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
@@ -325,11 +355,17 @@
           el_g_downloadSVG.download = `${title}.svg`;
           el_g_downloadPNG.href = pngUrl;
           el_g_downloadPNG.download = `${title}.png`;
+          setStatus('Rendered');
+          setTimeout(() => {
+            setStatus('Ready');
+          }, 800);
+
         }
       } catch(e) {
         el_g_preview.innerHTML='<div id="error">'+e.message+'</div>';
         el_g_downloadSVG.removeAttribute('href');
         el_g_downloadPNG.removeAttribute('href');
+        setStatus('Error', 'error');
       }
     }
 
