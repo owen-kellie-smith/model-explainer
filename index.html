@@ -100,57 +100,57 @@
 <body>
   <div id="left">
     <textarea id="umlInput" spellcheck="false">
-	@startuml
+  @startuml
 
-	title Development cycle
+  title Development cycle
 
-	'left to right direction
-	skinparam style strictuml
+  'left to right direction
+  skinparam style strictuml
 
-	actor U  as "User"
-	component C  as "Code"
-	actor D  as "Developer"
-	component B  as "Bug Report"
-	actor T  as "Tester"
-	component R  as "Requirements"
-	component PR  as "Prioritised Requirements"
-	component TC as "Test Case"
-	'actor P  as "Publisher"
-	component RN as "Release Note"
-	actor M as "Owner"
+  actor U  as "User"
+  component C  as "Code"
+  actor D  as "Developer"
+  component B  as "Bug Report"
+  actor T  as "Tester"
+  component R  as "Requirements"
+  component PR  as "Prioritised Requirements"
+  component TC as "Test Case"
+  'actor P  as "Publisher"
+  component RN as "Release Note"
+  actor M as "Owner"
 
-	D -r-> C : writes
-	B  .u.> D  : prompts
-	T -r-> TC : drafts
-	U  --> R  : describes
-	R  --> PR
-	M --> PR : selects
-	TC <.. PR  : is traced to
+  D -r-> C : writes
+  B  .u.> D  : prompts
+  T -r-> TC : drafts
+  U  --> R  : describes
+  R  --> PR
+  M --> PR : selects
+  TC <.. PR  : is traced to
 
-	TC  -u-> C : evaluates
-	TC  -u-> B  : [fail] produces
+  TC  -u-> C : evaluates
+  TC  -u-> B  : [fail] produces
 
-	M <-- C  : is published by
-	M --> RN : publishes (with code)
-	RN ..> U : informs
+  M <-- C  : is published by
+  M --> RN : publishes (with code)
+  RN ..> U : informs
 
-	@enduml
+  @enduml
     </textarea>
   </div>
 
   <div id="splitter"></div>
 
   <div id="right">
-	<div id="toolbar" title="Supported languages: Mermaid, PlantUML, Graphviz (DOT).
-	To force detection:
-	• Mermaid: start with any of graph|flowchart|sequenceDiagram|classDiagram|...'
-	• PlantUML: include '@startuml|enduml'
-	• Graphviz: start with 'digraph {'">	  
-		<span>Language: <strong id="detectedLabel">Mermaid</strong> 
-		(<a id="languageLink" href="#" target="_blank" style="text-decoration:none;color:#0078d4;">Learn more</a>)
-	  </span>
-	  <span id="status">Ready</span>
-	</div>
+  <div id="toolbar" title="Supported languages: Mermaid, PlantUML, Graphviz (DOT).
+  To force detection:
+  • Mermaid: start with any of graph|flowchart|sequenceDiagram|classDiagram|...'
+  • PlantUML: include '@startuml|enduml'
+  • Graphviz: start with 'digraph {'">    
+    <span>Language: <strong id="detectedLabel">Mermaid</strong> 
+    (<a id="languageLink" href="#" target="_blank" style="text-decoration:none;color:#0078d4;">Learn more</a>)
+    </span>
+    <span id="status">Ready</span>
+  </div>
 
     <div id="preview"><em>Diagram will appear here</em></div>
 
@@ -179,23 +179,23 @@
    What exists and what the app believes is true
    ========================================================= */
 
-		const el_g_umlInput = document.getElementById('umlInput');
-		const el_g_preview = document.getElementById('preview');
-		const el_g_status = document.getElementById('status');
-		const el_g_detectedLabel = document.getElementById('detectedLabel');
-		const el_g_languageLink = document.getElementById('languageLink');
-		const el_g_downloadPNG = document.getElementById('downloadPNG');
-		const el_g_downloadSVG = document.getElementById('downloadSVG');
-		const el_g_splitter = document.getElementById('splitter');
-		const el_g_left = document.getElementById('left');
+    const el_g_umlInput = document.getElementById('umlInput');
+    const el_g_preview = document.getElementById('preview');
+    const el_g_status = document.getElementById('status');
+    const el_g_detectedLabel = document.getElementById('detectedLabel');
+    const el_g_languageLink = document.getElementById('languageLink');
+    const el_g_downloadPNG = document.getElementById('downloadPNG');
+    const el_g_downloadSVG = document.getElementById('downloadSVG');
+    const el_g_splitter = document.getElementById('splitter');
+    const el_g_left = document.getElementById('left');
 
-		let viz = new Viz();
-		let timeout;
-		let currentSvgObjectUrl = null;
+    let viz = new Viz();
+    let timeout;
+    let currentSvgObjectUrl = null;
 
-		const DiagramState = { text:'', language:'mermaid', title:'Diagram' };
-		let isInitializing = true;
-		mermaid.initialize({ startOnLoad: false }); // window.mermaid is attached by mermaid.min.js called earlier
+    const DiagramState = { text:'', language:'mermaid', title:'Diagram' };
+    let isInitializing = true;
+    mermaid.initialize({ startOnLoad: false }); // window.mermaid is attached by mermaid.min.js called earlier
     let isDragging = false;
 
 /* =========================================================
@@ -203,12 +203,12 @@
    One-time boot logic (URL → text → state → first render)
    ========================================================= */
 
-		window.addEventListener('load', async () => {
-			initState();
-			Object.assign(DiagramState, deriveState(DiagramState.text));
-			isInitializing = false;    // NOW URL updates allowed
-			await renderFromState();   // render only
-		});
+    window.addEventListener('load', async () => {
+      initState();
+      Object.assign(DiagramState, deriveState(DiagramState.text));
+      isInitializing = false;    // NOW URL updates allowed
+      await renderFromState();   // render only
+    });
 
 
 /* =========================================================
@@ -216,12 +216,12 @@
    Things that trigger behavior but do not do the work
    ========================================================= */
 
-		el_g_umlInput.addEventListener('input', () => {
-			clearTimeout(timeout);
-			timeout = setTimeout(() => {
-				updateState(el_g_umlInput.value);
-			}, 600);
-		});
+    el_g_umlInput.addEventListener('input', () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        updateState(el_g_umlInput.value);
+      }, 600);
+    });
 
     el_g_splitter.addEventListener('mousedown', () => {
       isDragging = true;
@@ -249,139 +249,139 @@
    4.1 Functions — diagram state & orchestration
    ========================================================= */
 
-		function initState() {
-			debugger;
-			const fromUrl = getDiagramFromUrl();
+    function initState() {
+      debugger;
+      const fromUrl = getDiagramFromUrl();
 
-			if (fromUrl) {
-				DiagramState.text = fromUrl.text;
-				DiagramState.language = fromUrl.language;
-			} else {
-				DiagramState.text = el_g_umlInput.value;
-			}
-			el_g_umlInput.value = DiagramState.text;
-		}
+      if (fromUrl) {
+        DiagramState.text = fromUrl.text;
+        DiagramState.language = fromUrl.language;
+      } else {
+        DiagramState.text = el_g_umlInput.value;
+      }
+      el_g_umlInput.value = DiagramState.text;
+    }
 
-		function deriveState(text) {
-			const language = detectLanguage(text);
-			let title = 'Diagram';
-			if (language === 'mermaid') title = 'Mermaid Diagram';
-			else if (language === 'plantuml') title = 'PlantUML Diagram';
-			else title = extractGraphTitle(text);
-			return { text, language, title };
-		}
+    function deriveState(text) {
+      const language = detectLanguage(text);
+      let title = 'Diagram';
+      if (language === 'mermaid') title = 'Mermaid Diagram';
+      else if (language === 'plantuml') title = 'PlantUML Diagram';
+      else title = extractGraphTitle(text);
+      return { text, language, title };
+    }
 
-		async function updateState(text, opts = {}) {
-			const derived = deriveState(text);
+    async function updateState(text, opts = {}) {
+      const derived = deriveState(text);
 
-			DiagramState.text = text;
-			DiagramState.language = opts.lockLanguage
-				? DiagramState.language
-				: derived.language;
-			DiagramState.title = derived.title;
+      DiagramState.text = text;
+      DiagramState.language = opts.lockLanguage
+        ? DiagramState.language
+        : derived.language;
+      DiagramState.title = derived.title;
 
-			updateUrlFromState();
-			await renderFromState();
-		}
+      updateUrlFromState();
+      await renderFromState();
+    }
 
-		async function renderFromState() {
-			const { text, language, title } = DiagramState;
-			document.title = title;
-			el_g_detectedLabel.textContent = language;
-			const el_languageLink = document.getElementById('languageLink');
-			if (el_languageLink) {
-				el_languageLink.href =
-				  language === 'mermaid'
-				    ? 'https://mermaid.js.org/syntax/examples.html'
-				    : language === 'plantuml'
-				    ? 'https://plantuml.com'
-				    : 'https://graphviz.org/gallery/';
-			}
-			el_g_preview.innerHTML = '';
+    async function renderFromState() {
+      const { text, language, title } = DiagramState;
+      document.title = title;
+      el_g_detectedLabel.textContent = language;
+      const el_languageLink = document.getElementById('languageLink');
+      if (el_languageLink) {
+        el_languageLink.href =
+          language === 'mermaid'
+            ? 'https://mermaid.js.org/syntax/examples.html'
+            : language === 'plantuml'
+            ? 'https://plantuml.com'
+            : 'https://graphviz.org/gallery/';
+      }
+      el_g_preview.innerHTML = '';
 
-			try {
-				if (language === 'mermaid') {
-				  const d = document.createElement('div'); d.className='mermaid'; d.textContent=text; el_g_preview.appendChild(d);
-				  mermaid.init(undefined,d);
-				} else if (language === 'graphviz') {
-				  el_g_preview.appendChild(await viz.renderSVGElement(text));
-				} else {
-				  const img=document.createElement('img');
-				  img.src='https://www.plantuml.com/plantuml/svg/~1'+encodePlantUml(text);
-				  el_g_preview.appendChild(img);
-				}
-			} catch(e) {
-				el_g_preview.innerHTML='<div id="error">'+e.message+'</div>';
-			}
-		}
+      try {
+        if (language === 'mermaid') {
+          const d = document.createElement('div'); d.className='mermaid'; d.textContent=text; el_g_preview.appendChild(d);
+          mermaid.init(undefined,d);
+        } else if (language === 'graphviz') {
+          el_g_preview.appendChild(await viz.renderSVGElement(text));
+        } else {
+          const img=document.createElement('img');
+          img.src='https://www.plantuml.com/plantuml/svg/~1'+encodePlantUml(text);
+          el_g_preview.appendChild(img);
+        }
+      } catch(e) {
+        el_g_preview.innerHTML='<div id="error">'+e.message+'</div>';
+      }
+    }
 
 
 /* =========================================================
    4.2 Functions — URL encoding / decoding
    ========================================================= */
 
-		function getDiagramFromUrl() {
-			const p = new URLSearchParams(location.search);
-			const enc = p.get('diagram');
-			if (!enc) return null;
-			const lang = p.get('lang') || 'plantuml';
-			try { return { text: decodeDiagramFromUrl(enc, lang), language: lang }; }
-			catch { return null; }
-		}
+    function getDiagramFromUrl() {
+      const p = new URLSearchParams(location.search);
+      const enc = p.get('diagram');
+      if (!enc) return null;
+      const lang = p.get('lang') || 'plantuml';
+      try { return { text: decodeDiagramFromUrl(enc, lang), language: lang }; }
+      catch { return null; }
+    }
 
-		function updateUrlFromState() {
-			if (isInitializing) return;
-			if (!DiagramState.text) return;
+    function updateUrlFromState() {
+      if (isInitializing) return;
+      if (!DiagramState.text) return;
 
-			const p = new URLSearchParams();
-			p.set('lang', DiagramState.language);
-			p.set('diagram', encodeDiagramForUrl(
-				DiagramState.text,
-				DiagramState.language
-			));
-			history.replaceState(null, '', location.pathname + '?' + p.toString());
-		}
+      const p = new URLSearchParams();
+      p.set('lang', DiagramState.language);
+      p.set('diagram', encodeDiagramForUrl(
+        DiagramState.text,
+        DiagramState.language
+      ));
+      history.replaceState(null, '', location.pathname + '?' + p.toString());
+    }
 
-		function encodeDiagramForUrl(text, lang) {
-			return lang === 'plantuml' ? encodePlantUml(text) : encodeB64(text);
-		}
+    function encodeDiagramForUrl(text, lang) {
+      return lang === 'plantuml' ? encodePlantUml(text) : encodeB64(text);
+    }
 
-		function decodeDiagramFromUrl(enc, lang) {
-			return lang === 'plantuml' ? decodePlantUml(enc) : decodeB64(enc);
-		}
+    function decodeDiagramFromUrl(enc, lang) {
+      return lang === 'plantuml' ? decodePlantUml(enc) : decodeB64(enc);
+    }
 
-		function decodeB64(t){
-			return decodeURIComponent(escape(atob(t)));
-		}
+    function decodeB64(t){
+      return decodeURIComponent(escape(atob(t)));
+    }
 
-		function encodeB64(t){
-			return btoa(unescape(encodeURIComponent(t)));
-		}
-	
+    function encodeB64(t){
+      return btoa(unescape(encodeURIComponent(t)));
+    }
+  
 
 /* =========================================================
    4.3 Functions — language detection & metadata
    ========================================================= */
 
-		function detectLanguage(text) {
-			const t = text.trim();
-			if (/@startuml\b/i.test(t)) return 'plantuml';
-			if (/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline)\b/i.test(t)) return 'mermaid';
-			if (/^(digraph|graph)\b[\s\S]*\{/i.test(t)) return 'graphviz';
-			return 'mermaid';
-		}
+    function detectLanguage(text) {
+      const t = text.trim();
+      if (/@startuml\b/i.test(t)) return 'plantuml';
+      if (/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline)\b/i.test(t)) return 'mermaid';
+      if (/^(digraph|graph)\b[\s\S]*\{/i.test(t)) return 'graphviz';
+      return 'mermaid';
+    }
 
-		function extractGraphTitle(text) {
-			// Match digraph or graph followed by quoted or unquoted name
-			const nameMatch = text.match(/(?:digraph|graph)\s+(?:"([^"]+)"|([^\s{]+))/i);
-			if (nameMatch) {
-				return nameMatch[1] || nameMatch[2]; // quoted OR unquoted
-			}
+    function extractGraphTitle(text) {
+      // Match digraph or graph followed by quoted or unquoted name
+      const nameMatch = text.match(/(?:digraph|graph)\s+(?:"([^"]+)"|([^\s{]+))/i);
+      if (nameMatch) {
+        return nameMatch[1] || nameMatch[2]; // quoted OR unquoted
+      }
 
-			// Fallback: first label
-			const labelMatch = text.match(/label\s*=\s*"([^"]+)"/i);
-			return labelMatch ? labelMatch[1] : 'Graphviz Diagram';
-		}
+      // Fallback: first label
+      const labelMatch = text.match(/label\s*=\s*"([^"]+)"/i);
+      return labelMatch ? labelMatch[1] : 'Graphviz Diagram';
+    }
 
 /* =========================================================
    4.4 Functions — rendering engines
@@ -406,8 +406,8 @@
         await svgToPng(svgElement, svgData, el_g_downloadPNG, `${title}.png`, 2);
       } catch (e) {
         el_g_preview.innerHTML = `<div id="error">Error rendering Mermaid:\n${e.message}</div>`;
-		el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
-		el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
+    el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
+    el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
       }
     }
 
@@ -426,8 +426,8 @@
       } catch (e) {
         viz = new Viz();
         el_g_preview.innerHTML = `<div id="error">Error rendering Graphviz:\n${e.message}</div>`;
-		el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
-		el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
+    el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
+    el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
       }
     }
 
@@ -446,8 +446,8 @@
         el_g_downloadPNG.download = `${title}.png`;
       } catch (e) {
         el_g_preview.innerHTML = `<div id="error">Error rendering PlantUML:\n${e.message}</div>`;
-		el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
-		el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
+    el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
+    el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
       }
     }
 
