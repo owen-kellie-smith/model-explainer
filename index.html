@@ -179,7 +179,6 @@
 
     const el_g_umlInput = document.getElementById('umlInput');
     const el_g_preview = document.getElementById('preview');
-    const el_g_status = document.getElementById('status');
     const el_g_detectedLabel = document.getElementById('detectedLabel');
     const el_g_languageLink = document.getElementById('languageLink');
     const el_g_downloadPNG = document.getElementById('downloadPNG');
@@ -377,6 +376,35 @@
       return btoa(unescape(encodeURIComponent(t)));
     }
   
+    function decodePlantUml(enc) {
+      const data = plantumlDecode(enc);
+      const inflater = new Zlib.Inflate(data);
+      const decompressed = inflater.decompress();
+      return new TextDecoder().decode(decompressed);
+    }
+
+    function plantumlDecode(s) {
+      const alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_";
+      const bytes = [];
+
+      for (let i = 0; i < s.length; i += 4) {
+        const c1 = alphabet.indexOf(s.charAt(i));
+        const c2 = alphabet.indexOf(s.charAt(i + 1));
+        const c3 = alphabet.indexOf(s.charAt(i + 2));
+        const c4 = alphabet.indexOf(s.charAt(i + 3));
+
+        const b1 = (c1 << 2) | (c2 >> 4);
+        const b2 = ((c2 & 0xf) << 4) | (c3 >> 2);
+        const b3 = ((c3 & 0x3) << 6) | c4;
+
+        bytes.push(b1);
+        if (c3 !== 64) bytes.push(b2);
+        if (c4 !== 64) bytes.push(b3);
+      }
+
+      return new Uint8Array(bytes);
+    }
+
 
 /* =========================================================
    4.3 Functions — language detection & metadata
@@ -463,5 +491,172 @@
 
 
   </script>
+<!--
+====================================================================
+MODEL-VISUALISATION-DEMO — MANUAL FUNCTIONAL CHECKLIST
+====================================================================
+
+Use this checklist for manual QA / regression testing.
+Tick mentally (or copy elsewhere) after changes.
+
+--------------------------------------------------------------------
+0. PAGE LOAD & BASELINE
+--------------------------------------------------------------------
+[ ] Page loads without console errors
+[ ] No fatal JS exceptions on startup
+[ ] Body fills viewport, no body scrollbars
+[ ] Title is set and later updates dynamically
+
+--------------------------------------------------------------------
+1. LAYOUT & UI STRUCTURE
+--------------------------------------------------------------------
+[ ] Left pane contains textarea
+[ ] Right pane contains toolbar, preview, downloads
+[ ] Initial split ~40% / 60%
+[ ] Panes scroll internally, not the body
+
+Splitter
+[ ] Splitter visible between panes
+[ ] Cursor changes to resize cursor
+[ ] Mouse down starts drag
+[ ] Drag resizes panes horizontally
+[ ] Left pane constrained to ~20–80%
+[ ] Width snaps to 5% increments
+[ ] Mouse up ends drag and restores cursor
+
+--------------------------------------------------------------------
+2. TEXT INPUT
+--------------------------------------------------------------------
+[ ] Default embedded diagram appears on first load
+[ ] Textarea is monospace
+[ ] Spellcheck disabled
+[ ] Textarea fills left pane height
+[ ] Vertical scrolling works
+[ ] Textarea does not show resize handle
+
+--------------------------------------------------------------------
+3. LIVE UPDATE BEHAVIOR
+--------------------------------------------------------------------
+[ ] Editing text triggers re-render
+[ ] Rendering is debounced (~600ms)
+[ ] Continuous typing does not thrash renderer
+[ ] Minor edits (add/remove space) re-render correctly
+[ ] Empty input does not crash app
+
+--------------------------------------------------------------------
+4. LANGUAGE DETECTION
+--------------------------------------------------------------------
+Automatic detection
+[ ] @startuml → PlantUML
+[ ] Mermaid keywords → Mermaid
+[ ] digraph { → Graphviz
+[ ] Unknown input defaults to Mermaid
+
+Feedback
+[ ] Detected language shown in toolbar
+[ ] Label updates when input changes
+[ ] Renderer matches detected language
+
+--------------------------------------------------------------------
+5. TOOLBAR
+--------------------------------------------------------------------
+[ ] Toolbar stays visible while preview scrolls
+[ ] Language label updates correctly
+[ ] "Learn more" link updates per language
+[ ] Learn-more opens in new tab
+[ ] Status element present
+
+--------------------------------------------------------------------
+6. DIAGRAM RENDERING
+--------------------------------------------------------------------
+Mermaid
+[ ] Diagram renders correctly
+[ ] Errors shown in error box
+[ ] SVG appears in DOM
+[ ] Re-render replaces old output cleanly
+
+Graphviz
+[ ] DOT renders via Viz.js
+[ ] Errors handled gracefully
+[ ] Preview clears before re-render
+
+PlantUML
+[ ] Diagram rendered via remote server
+[ ] SVG loads correctly
+[ ] Network or syntax errors handled
+
+--------------------------------------------------------------------
+7. ERROR HANDLING
+--------------------------------------------------------------------
+[ ] Syntax errors produce visible error box
+[ ] Error text preserves line breaks
+[ ] Errors do not break subsequent renders
+[ ] Download links cleared on error
+
+--------------------------------------------------------------------
+8. DOWNLOADS — SVG
+--------------------------------------------------------------------
+Mermaid
+[ ] SVG download enabled after render
+[ ] SVG file is non-empty
+[ ] SVG opens correctly
+[ ] Filename matches diagram title
+
+Graphviz
+[ ] SVG download works
+[ ] Content matches preview
+
+PlantUML
+[ ] SVG download uses PlantUML server
+[ ] Filename correct
+
+--------------------------------------------------------------------
+9. DOWNLOADS — PNG
+--------------------------------------------------------------------
+Mermaid
+[ ] PNG download enabled after render
+[ ] PNG not blank
+[ ] White background
+[ ] Scaled resolution (2×)
+[ ] Content matches SVG
+
+Graphviz
+[ ] PNG export works
+[ ] PNG not blank
+
+PlantUML
+[ ] PNG download via PlantUML server
+
+--------------------------------------------------------------------
+10. URL ENCODING / SHARING
+--------------------------------------------------------------------
+[ ] URL updates on diagram change
+[ ] URL contains lang parameter
+[ ] URL contains diagram parameter
+[ ] Reload restores diagram from URL
+[ ] URL overrides embedded textarea content
+[ ] URL not updated during initial load
+[ ] Invalid URL fails gracefully
+
+--------------------------------------------------------------------
+11. TITLE & METADATA
+--------------------------------------------------------------------
+[ ] Document title updates on render
+[ ] Mermaid → "Mermaid Diagram"
+[ ] PlantUML → "PlantUML Diagram"
+[ ] Graphviz → graph name or fallback
+
+--------------------------------------------------------------------
+12. STABILITY & REGRESSION
+--------------------------------------------------------------------
+[ ] No memory leaks on repeated renders
+[ ] Splitter still works after many renders
+[ ] Downloads still work after language switches
+[ ] App remains usable after error recovery
+
+====================================================================
+END CHECKLIST
+====================================================================
+-->
 </body>
 </html>
