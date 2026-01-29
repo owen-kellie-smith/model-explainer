@@ -98,43 +98,7 @@
 </head>
 <body>
   <div id="left">
-    <textarea id="umlInput" spellcheck="false">
-      @startuml
-      ' demonstration chart
-      title Development cycle (demonstration chart)
-
-      'left to right direction
-      skinparam style strictuml
-
-      actor U  as "User"
-      component C  as "Code"
-      actor D  as "Developer"
-      component B  as "Bug Report"
-      actor T  as "Tester"
-      component R  as "Requirements"
-      component PR  as "Prioritised Requirements"
-      component TC as "Test Case"
-      'actor P  as "Publisher"
-      component RN as "Release Note"
-      actor M as "Owner"
-
-      D -r-> C : writes
-      B  .u.> D  : prompts
-      T -r-> TC : drafts
-      U  --> R  : describes
-      R  --> PR
-      M --> PR : selects
-      TC <.. PR  : is traced to
-
-      TC  -u-> C : evaluates
-      TC  -u-> B  : [fail] produces
-
-      M <-- C  : is published by
-      M --> RN : publishes (with code)
-      RN ..> U : informs
-
-      @enduml
-    </textarea>
+    <textarea id="umlInput" spellcheck="false" placeholder="Paste or type a diagram here…"></textarea>
   </div>
 
   <div id="splitter"></div>
@@ -147,6 +111,12 @@
       • Graphviz: start with 'digraph {'">    
       <span>Language: <strong id="detectedLabel">Mermaid</strong> 
       (<a id="languageLink" href="#" target="_blank" style="text-decoration:none;color:#0078d4;">Learn more</a>)
+      </span>
+      <span>
+        <a href="#" id="loadExample"
+         style="text-decoration:none;color:#0078d4;">
+         Example
+        </a>
       </span>
       <span id="status">Ready</span>
     </div>
@@ -184,25 +154,54 @@
     const el_g_downloadSVG = document.getElementById('downloadSVG');
     const el_g_splitter = document.getElementById('splitter');
     const el_g_left = document.getElementById('left');
+    const el_g_loadExample = document.getElementById('loadExample');
+    const el_g_status = document.getElementById('status');
 
     let viz = new Viz();
     let timeout;
-
-    const DiagramState = { text:'', language:'mermaid', title:'Diagram' };
+    let plantUmlImg = null;
+    let lastRenderedLanguage = null;
+    let currentExampleIndex = -1;
     let isInitializing = true;
-    mermaid.initialize({ startOnLoad: false }); // window.mermaid is attached by mermaid.min.js called earlier
     let isDragging = false;
 
-    const el_g_status = document.getElementById('status');
+    const DiagramState = { text:'', language:'mermaid', title:'Diagram' };
+    mermaid.initialize({ startOnLoad: false }); // window.mermaid is attached by mermaid.min.js called earlier
 
-    function setStatus(text, kind = 'neutral') {
-      el_g_status.textContent = text;
 
-      el_g_status.style.color =
-        kind === 'error' ? '#b00020' :
-        kind === 'busy'  ? '#555' :
-                           '#666';
-    }
+    const EXAMPLES = [
+      {
+        name: 'PlantUML – Development Cycle',
+        text: `
+      @startuml
+          title Development cycle
+
+          actor User
+          actor Developer
+          component Code
+          User --> Developer
+          Developer --> Code
+      @enduml`
+      },
+      {
+        name: 'Mermaid – Flowchart',
+        text: `
+     flowchart LR
+        A[Start] --> B{Decision}
+        B -->|Yes| C[Continue]
+        B -->|No| D[Stop]`
+      },
+      {
+        name: 'Graphviz – Simple Graph',
+        text: `
+       digraph Demo {
+            A -> B
+            B -> C
+            C -> A
+    }`
+      }
+    ];
+
 
 /* =========================================================
    2. Startup & Initial State Resolution
@@ -231,6 +230,21 @@
       }, 600);
     });
 
+
+el_g_loadExample.addEventListener('click', (e) => {
+  e.preventDefault();
+
+  currentExampleIndex =
+    (currentExampleIndex + 1) % EXAMPLES.length;
+
+  const example = EXAMPLES[currentExampleIndex];
+
+  el_g_umlInput.value = example.text;
+  updateState(example.text);
+
+  setStatus(`Loaded example: ${example.name}`);
+});
+
     el_g_splitter.addEventListener('mousedown', () => {
       isDragging = true;
       document.body.style.cursor = 'ew-resize';
@@ -256,6 +270,15 @@
 /* =========================================================
    4.1 Functions — diagram state & orchestration
    ========================================================= */
+
+    function setStatus(text, kind = 'neutral') {
+      el_g_status.textContent = text;
+
+      el_g_status.style.color =
+        kind === 'error' ? '#b00020' :
+        kind === 'busy'  ? '#555' :
+                           '#666';
+    }
 
     function initState() {
       const fromUrl = getDiagramFromUrl();
@@ -293,6 +316,12 @@
     }
 
     async function renderFromState() {
+      if (!DiagramState.text) {
+        el_g_preview.innerHTML = '<em>Choose an example or start typing…</em>';
+        setStatus('Ready');
+        return;
+      }
+      
       setStatus('Rendering…', 'busy');
       const { text, language, title } = DiagramState;
       document.title = title;
@@ -305,7 +334,11 @@
             ? 'https://plantuml.com'
             : 'https://graphviz.org/gallery/';
       }
-      el_g_preview.innerHTML = '';
+      // Clear preview when switching renderer types
+      if (lastRenderedLanguage && lastRenderedLanguage !== language) {
+        el_g_preview.innerHTML = '';
+        plantUmlImg = null;
+      }
 
       try {
         if (language === 'mermaid') {
@@ -321,7 +354,8 @@
             const svg = d.querySelector('svg');
             if (svg) {
               enableSvgAndPngDownloads(svg, title);
-              markAsRendered();
+              markAsRendered(language);
+
             }
           });
         } else if (language === 'graphviz') {
@@ -334,22 +368,38 @@
           }
           el_g_preview.appendChild(svg);
           enableSvgAndPngDownloads(svg, title);
-          markAsRendered();
+          markAsRendered(language);
 
         } else {
           const encoded = encodePlantUml(text);
           const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
           const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
 
-          const img = document.createElement('img');
-          img.src = svgUrl;
-          el_g_preview.appendChild(img);
+          // Reuse a single <img> to avoid aborting in-flight requests (Firefox)
+          if (!plantUmlImg) {
+            plantUmlImg = document.createElement('img');
+            el_g_preview.appendChild(plantUmlImg);
+          }
+
+          // Clear previous handlers to avoid stacking
+          plantUmlImg.onload = null;
+          plantUmlImg.onerror = null;
+
+          plantUmlImg.onload = () => {
+            markAsRendered( 'plantuml');
+          };
+
+          plantUmlImg.onerror = () => {
+            setStatus('Error loading PlantUML diagram', 'error');
+          };
+
+          plantUmlImg.src = pngUrl;
 
           el_g_downloadSVG.href = svgUrl;
           el_g_downloadSVG.download = `${title}.svg`;
           el_g_downloadPNG.href = pngUrl;
           el_g_downloadPNG.download = `${title}.png`;
-          markAsRendered();
+
 
         }
       } catch(e) {
@@ -361,7 +411,8 @@
     }
 
 
-    function markAsRendered(){
+    function markAsRendered( sLanguage){
+              lastRenderedLanguage = sLanguage;
               setStatus('Rendered');
               setTimeout(() => {
                 setStatus('Ready');
