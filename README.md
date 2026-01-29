@@ -1,34 +1,68 @@
-# model-visualisation-demo (Standalone HTML) 
-A lightweight, single‑file HTML tool for drawing graphs in the browser — no build step, no backend, no dependencies beyond standard web APIs (and optional CDN libraries if you choose to add them).
+# Model Explainer
 
-## Live Demo (GitHub Pages)
-See https://owen-kellie-smith.github.io/model-explainer/.
+A lightweight, single-file web tool for turning structured model definitions into clear, shareable diagrams.
+
+Model Explainer is designed to support **explanation, review, and shared understanding** in complex technical domains — particularly where models are defined as text (e.g. Mermaid, PlantUML, Graphviz) and need to be discussed by humans.
+
+There is no build step, no backend, and no required infrastructure.
+
+---
+
+## Live demo (GitHub Pages)
+
+https://owen-kellie-smith.github.io/model-explainer/
+
+---
+
+## What this is for
+
+This tool sits deliberately between **models** and **people**.
+
+Typical uses include:
+- Explaining model structure to non-developers
+- Reviewing or discussing changes to complex logic
+- Making implicit structure visible during design or refactoring
+- Generating consistent diagrams for documentation
+
+It is intentionally simple and avoids imposing a workflow.
+
+---
+
+## Supported formats
+
+- **Mermaid** (rendered fully in the browser)
+- **Graphviz (DOT)** (rendered fully in the browser)
+- **PlantUML** (rendered via the public PlantUML service)
+
+Language detection is automatic based on input.
+
+---
 
 ## Features
-- Simple UI to create/edit graphs
-- Zero setup: open `index.html` and go
-- Mermaid and Graphviz runs entirely in the browser (works offline once loaded), no data leaves your machine
-- (Encoded) PlantUML data does leave your machine and calls on the PlantUML API which produces the image
 
-## Quick Start (local)
-1. Clone or download this repo.
-2. Open `index.html` in your browser.
-   - Optionally, start a local server:
-     ```bash
-     # Python 3
-     python3 -m http.server 8080
-     # Then visit http://localhost:8080
-     ```
+- Single-file HTML application (open and use)
+- Live preview with debounced rendering
+- Automatic diagram type detection
+- SVG and PNG export
+- Shareable URLs (diagram encoded in the query string)
+- No tracking, no analytics
 
-## Privacy & Security
-- No tracking, no analytics.
-- Your graphs remain in your browser unless you explicitly export or share them.
+Mermaid and Graphviz render entirely locally once loaded.  
+PlantUML diagrams are encoded and rendered via the PlantUML API.
 
-## License
-MIT — see ./LICENSE.
+---
 
-## Attribution
-- Code largely authored by Copilot‑style AI tools.
+## Quick start (local)
+
+1. Clone or download the repository
+2. Open `index.html` in a browser
+
+Optionally, serve locally:
+
+```bash
+python3 -m http.server 8080
+# then visit http://localhost:8080
+
 
 ## Notes for Contributors
 - Please open issues for bugs/feature requests.
