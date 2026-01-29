@@ -322,6 +322,11 @@ el_g_loadExample.addEventListener('click', (e) => {
         return;
       }
       
+      // clear initial placeholder
+      if (!lastRenderedLanguage) {
+        el_g_preview.innerHTML = '';
+      }
+
       setStatus('Rendering…', 'busy');
       const { text, language, title } = DiagramState;
       document.title = title;
