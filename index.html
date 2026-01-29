@@ -231,19 +231,19 @@
     });
 
 
-el_g_loadExample.addEventListener('click', (e) => {
-  e.preventDefault();
+    el_g_loadExample.addEventListener('click', (e) => {
+      e.preventDefault();
 
-  currentExampleIndex =
-    (currentExampleIndex + 1) % EXAMPLES.length;
+      currentExampleIndex =
+        (currentExampleIndex + 1) % EXAMPLES.length;
 
-  const example = EXAMPLES[currentExampleIndex];
+      const example = EXAMPLES[currentExampleIndex];
 
-  el_g_umlInput.value = example.text;
-  updateState(example.text);
+      el_g_umlInput.value = example.text;
+      updateState(example.text);
 
-  setStatus(`Loaded example: ${example.name}`);
-});
+      setStatus(`Loaded example: ${example.name}`);
+    });
 
     el_g_splitter.addEventListener('mousedown', () => {
       isDragging = true;
