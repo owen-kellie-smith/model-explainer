@@ -2,7 +2,7 @@
 A lightweight, single‑file HTML tool for drawing graphs in the browser — no build step, no backend, no dependencies beyond standard web APIs (and optional CDN libraries if you choose to add them).
 
 ## Live Demo (GitHub Pages)
-See https://owen-kellie-smith.github.io/model-visualisation-demo/.
+See https://owen-kellie-smith.github.io/model-explainer/.
 
 ## Features
 - Simple UI to create/edit graphs
