@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Model-Visualisation-Demo</title>
+  <title>Model-Visualisation-Demo 1.0.1</title>
   <style>
     body {
       margin: 0;
@@ -100,40 +100,41 @@
 <body>
   <div id="left">
     <textarea id="umlInput" spellcheck="false">
-@startuml
-title Development cycle
+	@startuml
 
-'left to right direction
-skinparam style strictuml
+	title Development cycle
 
-actor U  as "User"
-component C  as "Code"
-actor D  as "Developer"
-component B  as "Bug Report"
-actor T  as "Tester"
-component R  as "Requirements"
-component PR  as "Prioritised Requirements"
-component TC as "Test Case"
-'actor P  as "Publisher"
-component RN as "Release Note"
-actor M as "Owner"
+	'left to right direction
+	skinparam style strictuml
 
-D -r-> C : writes
-B  .u.> D  : prompts
-T -r-> TC : drafts
-U  --> R  : describes
-R  --> PR
-M --> PR : selects
-TC <.. PR  : is traced to
+	actor U  as "User"
+	component C  as "Code"
+	actor D  as "Developer"
+	component B  as "Bug Report"
+	actor T  as "Tester"
+	component R  as "Requirements"
+	component PR  as "Prioritised Requirements"
+	component TC as "Test Case"
+	'actor P  as "Publisher"
+	component RN as "Release Note"
+	actor M as "Owner"
 
-TC  -u-> C : evaluates
-TC  -u-> B  : [fail] produces
+	D -r-> C : writes
+	B  .u.> D  : prompts
+	T -r-> TC : drafts
+	U  --> R  : describes
+	R  --> PR
+	M --> PR : selects
+	TC <.. PR  : is traced to
 
-M <-- C  : is published by
-M --> RN : publishes (with code)
-RN ..> U : informs
+	TC  -u-> C : evaluates
+	TC  -u-> B  : [fail] produces
 
-@enduml
+	M <-- C  : is published by
+	M --> RN : publishes (with code)
+	RN ..> U : informs
+
+	@enduml
     </textarea>
   </div>
 
@@ -168,35 +169,296 @@ RN ..> U : informs
   <script src="https://cdn.jsdelivr.net/npm/viz.js@2.1.2/full.render.js"></script>
 
   <script>
-    const textarea = document.getElementById('umlInput');
-    const preview = document.getElementById('preview');
-    const statusEl = document.getElementById('status');
-    const detectedLabel = document.getElementById('detectedLabel');
-    const languageLink = document.getElementById('languageLink');
-    const linkPNG = document.getElementById('downloadPNG');
-    const linkSVG = document.getElementById('downloadSVG');
 
-    let timeout;
-    mermaid.initialize({ startOnLoad: false });
-    let viz = new Viz();
-    let currentSvgObjectUrl = null;
+// High-level flow:
+// startup → derive state → render
+// events → update state → render
 
-    // Storage keys
-    const STORAGE_KEY_TEXT = 'diagramText';
+/* =========================================================
+   1. Globals & Application State
+   What exists and what the app believes is true
+   ========================================================= */
 
-    function setStatus(msg, ms = 800) {
-      statusEl.textContent = msg;
-      if (setStatus.t) clearTimeout(setStatus.t);
-      setStatus.t = setTimeout(() => (statusEl.textContent = 'Ready'), ms);
+		const el_g_umlInput = document.getElementById('umlInput');
+		const el_g_preview = document.getElementById('preview');
+		const el_g_status = document.getElementById('status');
+		const el_g_detectedLabel = document.getElementById('detectedLabel');
+		const el_g_languageLink = document.getElementById('languageLink');
+		const el_g_downloadPNG = document.getElementById('downloadPNG');
+		const el_g_downloadSVG = document.getElementById('downloadSVG');
+		const el_g_splitter = document.getElementById('splitter');
+		const el_g_left = document.getElementById('left');
+
+		let viz = new Viz();
+		let timeout;
+		let currentSvgObjectUrl = null;
+
+		const DiagramState = { text:'', language:'mermaid', title:'Diagram' };
+		let isInitializing = true;
+		mermaid.initialize({ startOnLoad: false }); // window.mermaid is attached by mermaid.min.js called earlier
+    let isDragging = false;
+
+/* =========================================================
+   2. Startup & Initial State Resolution
+   One-time boot logic (URL → text → state → first render)
+   ========================================================= */
+
+		window.addEventListener('load', async () => {
+			initState();
+			Object.assign(DiagramState, deriveState(DiagramState.text));
+			isInitializing = false;    // NOW URL updates allowed
+			await renderFromState();   // render only
+		});
+
+
+/* =========================================================
+   3. Event Handlers (User & Browser Actions)
+   Things that trigger behavior but do not do the work
+   ========================================================= */
+
+		el_g_umlInput.addEventListener('input', () => {
+			clearTimeout(timeout);
+			timeout = setTimeout(() => {
+				updateState(el_g_umlInput.value);
+			}, 600);
+		});
+
+    el_g_splitter.addEventListener('mousedown', () => {
+      isDragging = true;
+      document.body.style.cursor = 'ew-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      const screenWidth = window.innerWidth;
+      const rawPercent = Math.max(20,Math.min(80,(e.clientX / screenWidth) * 100));
+      el_g_left.style.width = `${Math.round(rawPercent / 5) * 5}%`;
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+      document.body.style.cursor = 'default';
+    });
+
+/* =========================================================
+   4. Behavior Functions (What the app actually does when called by event listeners)
+   State updates, URl-encoding, detection, rendering, helpers
+   ========================================================= */
+   
+/* =========================================================
+   4.1 Functions — diagram state & orchestration
+   ========================================================= */
+
+		function initState() {
+			debugger;
+			const fromUrl = getDiagramFromUrl();
+
+			if (fromUrl) {
+				DiagramState.text = fromUrl.text;
+				DiagramState.language = fromUrl.language;
+			} else {
+				DiagramState.text = el_g_umlInput.value;
+			}
+			el_g_umlInput.value = DiagramState.text;
+		}
+
+		function deriveState(text) {
+			const language = detectLanguage(text);
+			let title = 'Diagram';
+			if (language === 'mermaid') title = 'Mermaid Diagram';
+			else if (language === 'plantuml') title = 'PlantUML Diagram';
+			else title = extractGraphTitle(text);
+			return { text, language, title };
+		}
+
+		async function updateState(text, opts = {}) {
+			const derived = deriveState(text);
+
+			DiagramState.text = text;
+			DiagramState.language = opts.lockLanguage
+				? DiagramState.language
+				: derived.language;
+			DiagramState.title = derived.title;
+
+			updateUrlFromState();
+			await renderFromState();
+		}
+
+		async function renderFromState() {
+			const { text, language, title } = DiagramState;
+			document.title = title;
+			el_g_detectedLabel.textContent = language;
+			const el_languageLink = document.getElementById('languageLink');
+			if (el_languageLink) {
+				el_languageLink.href =
+				  language === 'mermaid'
+				    ? 'https://mermaid.js.org/syntax/examples.html'
+				    : language === 'plantuml'
+				    ? 'https://plantuml.com'
+				    : 'https://graphviz.org/gallery/';
+			}
+			el_g_preview.innerHTML = '';
+
+			try {
+				if (language === 'mermaid') {
+				  const d = document.createElement('div'); d.className='mermaid'; d.textContent=text; el_g_preview.appendChild(d);
+				  mermaid.init(undefined,d);
+				} else if (language === 'graphviz') {
+				  el_g_preview.appendChild(await viz.renderSVGElement(text));
+				} else {
+				  const img=document.createElement('img');
+				  img.src='https://www.plantuml.com/plantuml/svg/~1'+encodePlantUml(text);
+				  el_g_preview.appendChild(img);
+				}
+			} catch(e) {
+				el_g_preview.innerHTML='<div id="error">'+e.message+'</div>';
+			}
+		}
+
+
+/* =========================================================
+   4.2 Functions — URL encoding / decoding
+   ========================================================= */
+
+		function getDiagramFromUrl() {
+			const p = new URLSearchParams(location.search);
+			const enc = p.get('diagram');
+			if (!enc) return null;
+			const lang = p.get('lang') || 'plantuml';
+			try { return { text: decodeDiagramFromUrl(enc, lang), language: lang }; }
+			catch { return null; }
+		}
+
+		function updateUrlFromState() {
+			if (isInitializing) return;
+			if (!DiagramState.text) return;
+
+			const p = new URLSearchParams();
+			p.set('lang', DiagramState.language);
+			p.set('diagram', encodeDiagramForUrl(
+				DiagramState.text,
+				DiagramState.language
+			));
+			history.replaceState(null, '', location.pathname + '?' + p.toString());
+		}
+
+		function encodeDiagramForUrl(text, lang) {
+			return lang === 'plantuml' ? encodePlantUml(text) : encodeB64(text);
+		}
+
+		function decodeDiagramFromUrl(enc, lang) {
+			return lang === 'plantuml' ? decodePlantUml(enc) : decodeB64(enc);
+		}
+
+		function decodeB64(t){
+			return decodeURIComponent(escape(atob(t)));
+		}
+
+		function encodeB64(t){
+			return btoa(unescape(encodeURIComponent(t)));
+		}
+	
+
+/* =========================================================
+   4.3 Functions — language detection & metadata
+   ========================================================= */
+
+		function detectLanguage(text) {
+			const t = text.trim();
+			if (/@startuml\b/i.test(t)) return 'plantuml';
+			if (/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|mindmap|timeline)\b/i.test(t)) return 'mermaid';
+			if (/^(digraph|graph)\b[\s\S]*\{/i.test(t)) return 'graphviz';
+			return 'mermaid';
+		}
+
+		function extractGraphTitle(text) {
+			// Match digraph or graph followed by quoted or unquoted name
+			const nameMatch = text.match(/(?:digraph|graph)\s+(?:"([^"]+)"|([^\s{]+))/i);
+			if (nameMatch) {
+				return nameMatch[1] || nameMatch[2]; // quoted OR unquoted
+			}
+
+			// Fallback: first label
+			const labelMatch = text.match(/label\s*=\s*"([^"]+)"/i);
+			return labelMatch ? labelMatch[1] : 'Graphviz Diagram';
+		}
+
+/* =========================================================
+   4.4 Functions — rendering engines
+   ========================================================= */
+
+    async function renderMermaid(source, title) {
+      el_g_preview.innerHTML = '';
+      const mermaidDiv = document.createElement('div');
+      mermaidDiv.className = 'mermaid';
+      mermaidDiv.textContent = source;
+      el_g_preview.appendChild(mermaidDiv);
+      try {
+        mermaid.init(undefined, mermaidDiv);
+        await new Promise(requestAnimationFrame);
+        const svgElement = mermaidDiv.querySelector('svg');
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
+        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
+        el_g_downloadSVG.href = currentSvgObjectUrl;
+        el_g_downloadSVG.download = `${title}.svg`;
+        await svgToPng(svgElement, svgData, el_g_downloadPNG, `${title}.png`, 2);
+      } catch (e) {
+        el_g_preview.innerHTML = `<div id="error">Error rendering Mermaid:\n${e.message}</div>`;
+		el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
+		el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
+      }
     }
 
-    function detectLanguage(text) {
-      const trimmed = text.trim();
-      if (/@startuml\b/i.test(trimmed) || /\benduml\b/i.test(trimmed)) return 'plantuml';
-//      if (/skinparam|actor|component|package\b/i.test(trimmed)) return 'plantuml';
-      if (/^(graph|flowchart|sequenceDiagram|classDiagram|stateDiagram|erDiagram|journey|gantt|pie|quadrantChart|mindmap|timeline)\b/i.test(trimmed)) return 'mermaid';
-      if (/^(digraph|graph)\b[\s\S]*\{/i.test(trimmed)) return 'graphviz';
-      return 'mermaid';
+    async function renderGraphviz(source, title) {
+      el_g_preview.innerHTML = '';
+      try {
+        const svgElement = await viz.renderSVGElement(source);
+        el_g_preview.appendChild(svgElement);
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
+        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
+        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
+        el_g_downloadSVG.href = currentSvgObjectUrl;
+        el_g_downloadSVG.download = `${title}.svg`;
+        await svgToPng(svgElement, svgData, el_g_downloadPNG, `${title}.png`, 2);
+      } catch (e) {
+        viz = new Viz();
+        el_g_preview.innerHTML = `<div id="error">Error rendering Graphviz:\n${e.message}</div>`;
+		el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
+		el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
+      }
+    }
+
+    async function renderPlantUML(source, title) {
+      el_g_preview.innerHTML = '';
+      try {
+        const encoded = encodePlantUml(source);
+        const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
+        const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
+        const img = document.createElement('img');
+        img.src = svgUrl;
+        el_g_preview.appendChild(img);
+        el_g_downloadSVG.href = svgUrl;
+        el_g_downloadSVG.download = `${title}.svg`;
+        el_g_downloadPNG.href = pngUrl;
+        el_g_downloadPNG.download = `${title}.png`;
+      } catch (e) {
+        el_g_preview.innerHTML = `<div id="error">Error rendering PlantUML:\n${e.message}</div>`;
+		el_g_downloadSVG.removeAttribute('href'); el_g_downloadSVG.removeAttribute('download');
+		el_g_downloadPNG.removeAttribute('href'); el_g_downloadPNG.removeAttribute('download');
+      }
+    }
+
+/* =========================================================
+   4.5 Functions — encoding & export utilities
+   ========================================================= */
+
+    function encodePlantUml(text) {
+      const deflate = new Zlib.Deflate(new TextEncoder().encode(text));
+      const compressed = deflate.compress();
+      return plantumlEncode(compressed);
     }
 
     function plantumlEncode(dataBytes) {
@@ -211,11 +473,6 @@ RN ..> U : informs
         result += alphabet[c1] + alphabet[c2] + alphabet[c3] + alphabet[c4];
       }
       return result;
-    }
-    function encodePlantUml(text) {
-      const deflate = new Zlib.Deflate(new TextEncoder().encode(text));
-      const compressed = deflate.compress();
-      return plantumlEncode(compressed);
     }
 
     async function svgToPng(svgElement, svgData, anchorEl, filename = 'diagram.png', scale = 2) {
@@ -247,145 +504,6 @@ RN ..> U : informs
       });
     }
 
-    async function renderMermaid(source, title) {
-      preview.innerHTML = '';
-      const mermaidDiv = document.createElement('div');
-      mermaidDiv.className = 'mermaid';
-      mermaidDiv.textContent = source;
-      preview.appendChild(mermaidDiv);
-      try {
-        mermaid.init(undefined, mermaidDiv);
-        await new Promise(requestAnimationFrame);
-        const svgElement = mermaidDiv.querySelector('svg');
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
-        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
-        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
-        linkSVG.href = currentSvgObjectUrl;
-        linkSVG.download = `${title}.svg`;
-        await svgToPng(svgElement, svgData, linkPNG, `${title}.png`, 2);
-      } catch (e) {
-        preview.innerHTML = `<div id="error">Error rendering Mermaid:\n${e.message}</div>`;
-		linkSVG.removeAttribute('href'); linkSVG.removeAttribute('download');
-		linkPNG.removeAttribute('href'); linkPNG.removeAttribute('download');
-      }
-    }
-
-    async function renderGraphviz(source, title) {
-      preview.innerHTML = '';
-      try {
-        const svgElement = await viz.renderSVGElement(source);
-        preview.appendChild(svgElement);
-        const svgData = new XMLSerializer().serializeToString(svgElement);
-        const svgBlob = new Blob([svgData], { type: 'image/svg+xml' });
-        if (currentSvgObjectUrl) URL.revokeObjectURL(currentSvgObjectUrl);
-        currentSvgObjectUrl = URL.createObjectURL(svgBlob);
-        linkSVG.href = currentSvgObjectUrl;
-        linkSVG.download = `${title}.svg`;
-        await svgToPng(svgElement, svgData, linkPNG, `${title}.png`, 2);
-      } catch (e) {
-        viz = new Viz();
-        preview.innerHTML = `<div id="error">Error rendering Graphviz:\n${e.message}</div>`;
-		linkSVG.removeAttribute('href'); linkSVG.removeAttribute('download');
-		linkPNG.removeAttribute('href'); linkPNG.removeAttribute('download');
-      }
-    }
-
-    async function renderPlantUML(source, title) {
-      preview.innerHTML = '';
-      try {
-        const encoded = encodePlantUml(source);
-        const svgUrl = `https://www.plantuml.com/plantuml/svg/~1${encoded}`;
-        const pngUrl = `https://www.plantuml.com/plantuml/png/~1${encoded}`;
-        const img = document.createElement('img');
-        img.src = svgUrl;
-        preview.appendChild(img);
-        linkSVG.href = svgUrl;
-        linkSVG.download = `${title}.svg`;
-        linkPNG.href = pngUrl;
-        linkPNG.download = `${title}.png`;
-      } catch (e) {
-        preview.innerHTML = `<div id="error">Error rendering PlantUML:\n${e.message}</div>`;
-		linkSVG.removeAttribute('href'); linkSVG.removeAttribute('download');
-		linkPNG.removeAttribute('href'); linkPNG.removeAttribute('download');
-      }
-    }
-
-
-function extractGraphTitle(text) {
-  // Match digraph or graph followed by quoted or unquoted name
-  const nameMatch = text.match(/(?:digraph|graph)\s+(?:"([^"]+)"|([^\s{]+))/i);
-  if (nameMatch) {
-    return nameMatch[1] || nameMatch[2]; // quoted OR unquoted
-  }
-
-  // Fallback: first label
-  const labelMatch = text.match(/label\s*=\s*"([^"]+)"/i);
-  return labelMatch ? labelMatch[1] : 'Graphviz Diagram';
-}
-
-
-    async function updateDiagram() {
-      const text = textarea.value;
-      localStorage.setItem(STORAGE_KEY_TEXT, text);
-      const type = detectLanguage(text);
-
-      // Extract title for HTML and filenames
-      let newTitle = 'Diagram';
-      if (type === 'mermaid') {
-        const match = text.match(/title\["([^"]+)"\]/);
-        newTitle = match ? match[1] : 'Mermaid Diagram';
-      } else if (type === 'plantuml') {
-        const match = text.match(/^\s*title\s+(.+)/mi);
-        newTitle = match ? match[1].replace(/['"]+/g, '') : 'PlantUML Diagram';
-      } else {
-
-		newTitle = extractGraphTitle(text);
-      }
-      document.title = newTitle;
-
-      detectedLabel.textContent = type === 'plantuml' ? 'PlantUML' : type === 'graphviz' ? 'Graphviz (DOT)' : 'Mermaid';
-//      const languageLink = document.getElementById('languageLink');   // duplicate declaration
-      if (type === 'mermaid') languageLink.href = 'https://mermaid.js.org/syntax/examples.html';
-      else if (type === 'plantuml') languageLink.href = 'https://plantuml.com/guide';
-      else languageLink.href = 'https://graphviz.org/gallery/';
-
-      setStatus(`Detected: ${detectedLabel.textContent}`, 900);
-
-      if (type === 'mermaid') await renderMermaid(text, newTitle);
-      else if (type === 'graphviz') await renderGraphviz(text, newTitle);
-      else await renderPlantUML(text, newTitle);
-    }
-
-    textarea.addEventListener('input', () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(updateDiagram, 600);
-    });
-
-    window.addEventListener('load', () => {
-      const savedText = localStorage.getItem(STORAGE_KEY_TEXT);
-      if (savedText) textarea.value = savedText;
-      updateDiagram();
-    });
-
-    // Splitter logic
-    const splitter = document.getElementById('splitter');
-    const left = document.getElementById('left');
-    let isDragging = false;
-    splitter.addEventListener('mousedown', () => {
-      isDragging = true;
-      document.body.style.cursor = 'ew-resize';
-    });
-    document.addEventListener('mousemove', (e) => {
-      if (!isDragging) return;
-      const screenWidth = window.innerWidth;
-      const rawPercent = Math.max(20,Math.min(80,(e.clientX / screenWidth) * 100));
-      left.style.width = `${Math.round(rawPercent / 5) * 5}%`;
-    });
-    document.addEventListener('mouseup', () => {
-      isDragging = false;
-      document.body.style.cursor = 'default';
-    });
   </script>
 </body>
 </html>
