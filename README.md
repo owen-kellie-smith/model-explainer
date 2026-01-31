@@ -62,7 +62,3 @@ Optionally, serve locally:
 ```bash
 python3 -m http.server 8080
 # then visit http://localhost:8080
-
-
-## Notes for Contributors
-- Please open issues for bugs/feature requests.
