@@ -300,6 +300,11 @@
       else title = extractGraphTitle(text);
       return { text, language, title };
     }
+ 
+    function fillElement(el, d){
+        el.innerHTML = '';
+        el.appendChild(d);
+    }
 
     async function updateState(text, opts = {}) {
       // opts.lockLanguage reserved for future manual language override
@@ -353,7 +358,7 @@
           const d = document.createElement('div');
           d.className = 'mermaid';
           d.textContent = text;
-          el_g_preview.appendChild(d);
+          fillElement(el_g_preview, d);
 
           mermaid.init(undefined, d);
 
@@ -374,7 +379,7 @@
             viz = new Viz(); // reset after failure
             throw e;
           }
-          el_g_preview.appendChild(svg);
+          fillElement(el_g_preview, svg);
           enableSvgAndPngDownloads(svg, title);
           markAsRendered(language);
 
@@ -386,7 +391,7 @@
           // Reuse a single <img> to avoid aborting in-flight requests (Firefox)
           if (!plantUmlImg) {
             plantUmlImg = document.createElement('img');
-            el_g_preview.appendChild(plantUmlImg);
+            fillElement(el_g_preview, plantUMlImg);
           }
 
           // Clear previous handlers to avoid stacking
