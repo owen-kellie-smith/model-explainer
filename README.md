@@ -22,8 +22,7 @@ Typical uses include:
 - Making implicit structure visible during design or refactoring
 - Generating consistent diagrams for documentation
 
-It is intentionally simple and avoids imposing a workflow.
-There is no build step, no backend, and no required infrastructure.
+Single file, no build step, no backend.
 
 ---
 
