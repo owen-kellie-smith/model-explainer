@@ -8,7 +8,7 @@ A lightweight, single-file web tool for turning text-based model definitions int
 
 ## What this is for
 
-Model Explainer is designed to support **explanation, review, and shared understanding** in complex technical domains — particularly where models are defined as text (e.g. Mermaid, PlantUML, Graphviz) and need to be discussed by people.
+Model Explainer supports **explanation, review, and shared understanding** in complex technical domains — particularly where models are defined as text (e.g. Mermaid, PlantUML, Graphviz) and need to be discussed by people.
 
 Typical uses include:
 - Explaining model structure to non-developers
