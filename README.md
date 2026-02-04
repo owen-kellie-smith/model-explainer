@@ -2,10 +2,6 @@
 
 A lightweight, single-file web tool for turning structured model definitions into clear, shareable diagrams.
 
-Model Explainer is designed to support **explanation, review, and shared understanding** in complex technical domains — particularly where models are defined as text (e.g. Mermaid, PlantUML, Graphviz) and need to be discussed by humans.
-
-There is no build step, no backend, and no required infrastructure.
-
 ---
 
 ## Live demo (GitHub Pages)
@@ -18,6 +14,8 @@ https://owen-kellie-smith.github.io/model-explainer/
 
 This tool sits deliberately between **models** and **people**.
 
+Model Explainer is designed to support **explanation, review, and shared understanding** in complex technical domains — particularly where models are defined as text (e.g. Mermaid, PlantUML, Graphviz) and need to be discussed by people.
+
 Typical uses include:
 - Explaining model structure to non-developers
 - Reviewing or discussing changes to complex logic
@@ -25,6 +23,7 @@ Typical uses include:
 - Generating consistent diagrams for documentation
 
 It is intentionally simple and avoids imposing a workflow.
+There is no build step, no backend, and no required infrastructure.
 
 ---
 
